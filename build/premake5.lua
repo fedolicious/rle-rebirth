@@ -168,12 +168,14 @@ if (downloadRaylib) then
         links {"raylib"}
 
         cdialect "C99"
-        cppdialect "C++17"
+        cppdialect "C++20"
 
         includedirs {raylib_dir .. "/src" }
         includedirs {raylib_dir .."/src/external" }
         includedirs { raylib_dir .."/src/external/glfw/include" }
-        flags { "ShadowedVariables"}
+        flags {"FatalCompileWarnings"}
+        -- buildoptions {"-Wnrvo"}
+        warnings "Extra"
         platform_defines()
 
         filter "action:vs*"
