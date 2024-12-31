@@ -13,49 +13,37 @@ by Jeffery Myers is marked with CC0 1.0. To view a copy of this license, visit h
 
 #include <cstdint>
 #include <cstdio>
+#include <cmath>
 #include <algorithm>
 #include <limits>
 #include <iostream>
 
 namespace world {
-    constexpr uint32_t wdth = 1280*16;
-    constexpr uint32_t hght = 800*16;
+    constexpr double wdth = 1280*16;
+    constexpr double hght = 800*16;
 }
-namespace player { //TODO switch to float, then switch to fixed point
-    constexpr uint32_t speed = 1;
-    constexpr int32_t gravity = 25;
-    constexpr int32_t max_y_vel = 30*16;
-    constexpr uint32_t wdth = 50*16;
-    constexpr uint32_t hght = 50*16;
-    uint32_t x = 200*16;
-    uint32_t y = 400*16;
-    int32_t x_vel = 0;
-    int32_t y_vel = 0;
-    int32_t x_accel = 0;
-    int32_t y_accel = gravity;
-}
-struct point {
-    uint32_t x;
-    uint32_t y;
-};
-
-enum class overflow : uint8_t {none, high, low};
-[[nodiscard]] constexpr overflow sum_overflow(uint32_t x, int32_t y) {
-    using enum overflow;
-    if(y > 0) {
-        return (x > std::numeric_limits<decltype(x)>::max() - y) ? high : none;
-    } else {
-        return (x < std::numeric_limits<decltype(x)>::min() - y) ? low : none;
+namespace player {
+    constexpr double ground_accel = 10;
+    constexpr double air_accel = 50;
+    constexpr double gravity = 25;
+    constexpr double jump_vel = -300;
+    constexpr double max_ground_speed = 100;
+    constexpr double wdth = 50*16;
+    constexpr double hght = 50*16;
+    double x = 200*16;
+    double y = 400*16;
+    double x_vel = 0;
+    double y_vel = 0;
+    // double x_accel = 0;
+    // double y_accel = gravity;
+    bool on_ground() {
+        return y == 12800.0f;
     }
 }
-template<class T1, class T2>
-overflow sum_overflow(T1, T2) = delete;
-
-template<std::unsigned_integral T>
-constexpr T distance(T x, T y) {
-    return (x > y) ? x-y : y-x;
-}
-
+struct point {
+    double x;
+    double y;
+};
 int main () {
     // Tell the window to use vsync and work on high DPI displays
     SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
@@ -71,83 +59,61 @@ int main () {
     
     // game loop
     constexpr point chain_point{640*16,400*16};
-    constexpr uint32_t chain_length{400*16};
+    constexpr double chain_length{400*16};
     while (!WindowShouldClose()) {
-        //update player
         bool outside;
         {
-            // const x_dist = (player::x > chain_point.x) ? player::x-chain_point.x : chain_point.x-player::x;
-            // const x_dist = (player::x > chain_point.x) ? player::x-chain_point.x : chain_point.x-player::x;
-            const uint64_t x_dist = distance(player::x, chain_point.x);
-            const uint64_t y_dist = distance(player::y, chain_point.y);
-            //sum could overflow
-            outside = x_dist*x_dist + y_dist*y_dist > uint64_t(chain_length)*chain_length;
+            const double x_dist = std::abs(player::x-chain_point.x);
+            const double y_dist = std::abs(player::y-chain_point.y);
+            outside = x_dist*x_dist + y_dist*y_dist > chain_length*chain_length;
         }
+        //update player
         {
             using namespace player;
-            x_accel = 0;
-            y_accel = 0;
-            
-            y_accel += gravity;
-
-            if(outside) {
-                //cast could overflow
-                x_accel += (int(chain_point.x)-int(x))/100;
-                y_accel += (int(chain_point.y)-int(y))/100;
+            //clamp within chain radius
+            if(IsKeyDown(KEY_LEFT_SHIFT) && outside) {
+                const auto rel_x = x-chain_point.x;
+                const auto rel_y = y-chain_point.y;
+                const auto chain_dist_sq = rel_x*rel_x + rel_y*rel_y;
+                const auto chain_dist = std::sqrt(chain_dist_sq);
+                x = chain_point.x + chain_length/chain_dist*rel_x;
+                y = chain_point.y + chain_length/chain_dist*rel_y;
+                const auto dot_prod = (x_vel*rel_x + y_vel*rel_y)/chain_dist_sq;
+                x_vel -= rel_x*dot_prod;
+                y_vel -= rel_y*dot_prod;
             }
-            
-            // x_vel += x_accel;
-
-            // x_vel = 0;
-            // x_vel += 100*speed*(IsKeyDown(KEY_RIGHT)||IsKeyDown(KEY_D));
-            // x_vel -= 100*speed*(IsKeyDown(KEY_LEFT)||IsKeyDown(KEY_A));
-
-            if(IsKeyPressed(KEY_SPACE)) {
-                y_vel = -30*16;
+            //velocity
+            const double x_direction = IsKeyDown(KEY_D)-IsKeyDown(KEY_A);
+            const auto target_vel = x_direction*max_ground_speed;
+            if(on_ground()) {
+                if(x_vel < target_vel) {
+                    x_vel = std::min(x_vel+ground_accel, target_vel);
+                } else {
+                    x_vel = std::max(x_vel-ground_accel, target_vel);
+                }
+                if(IsKeyPressed(KEY_SPACE)) {
+                    y_vel = jump_vel;
+                }
+            } else {
+                y_vel += gravity;
             }
-            x_vel += x_accel;
-            y_vel = std::min(y_vel+y_accel, max_y_vel);
-            
-            // x_vel += speed*IsKeyDown(KEY_RIGHT);
-            // x_vel -= speed*IsKeyDown(KEY_LEFT);
-            // player::yVel += player::speed*IsKeyDown(KEY_DOWN);
-            // player::yVel -= player::speed*IsKeyDown(KEY_UP);
-
-            switch(sum_overflow(x,x_vel)) {
-                using enum overflow;
-                case none:
-                    if(x+x_vel <= world::wdth) {
-                        x += x_vel;
-                        break;
-                    }
-                    [[fallthrough]];
-                case high:
-                    x = world::wdth;
-                    x_vel = 0;
-                    break;
-                case low :
-                    x = 0;
-                    x_vel = 0;
-                    break;
+            //position and clamp
+            x += x_vel;
+            y += y_vel;
+            if(x > world::wdth) {
+                x = world::wdth;
+                x_vel = 0;
+            } else if(x < 0) {
+                x = 0;
+                x_vel = 0;
             }
-            switch(sum_overflow(y,y_vel)) {
-                using enum overflow;
-                case none:
-                    if(y+y_vel <= world::hght) {
-                        y += y_vel;
-                        break;
-                    }
-                    [[fallthrough]];
-                case high:
-                    y = world::hght;
-                    y_vel = 0;
-                    break;
-                case low :
-                    y = 0;
-                    y_vel = 0;
-                    break;
+            if(y > world::hght) {
+                y = world::hght;
+                y_vel = 0;
+            } else if(y < 0) {
+                y = 0;
+                y_vel = 0;
             }
-    
         }
         BeginDrawing();
         constexpr uint32_t scale = 16;
@@ -157,7 +123,7 @@ int main () {
         DrawText("Hello Raylib", 200, 200, 20, WHITE);
         DrawTexture(wabbit, 400, 200, WHITE);
 
-        DrawText(TextFormat("x: %u\ny: %u\nxV: %d\nyV: %d", player::x, player::y, player::x_vel, player::y_vel),
+        DrawText(TextFormat("x: %.0lf\ny: %.0lf\nxV: %.0lf\nyV: %.0lf", player::x, player::y, player::x_vel, player::y_vel),
             200, 250, 20, WHITE);
 
         DrawCircle(
@@ -178,7 +144,7 @@ int main () {
             player::y/scale - drawnHght/2,
             drawnWdth,
             drawnHght,
-            RED);
+            player::on_ground()?ORANGE:RED);
         EndDrawing();
     }
 
