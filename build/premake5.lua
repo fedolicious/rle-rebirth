@@ -174,7 +174,12 @@ if (downloadRaylib) then
         includedirs {raylib_dir .."/src/external" }
         includedirs { raylib_dir .."/src/external/glfw/include" }
         flags {"FatalCompileWarnings"}
-        buildoptions {--[["-Wnrvo"]] "-Wno-error=unused-variable", "-Wno-error=unused-parameter"}
+        buildoptions {
+            -- "-Wnrvo",
+            "-Wno-error=unused-variable",
+            "-Wno-error=unused-parameter",
+            "-Wno-error=unused-but-set-variable",
+        }
         warnings "Extra"
         platform_defines()
 

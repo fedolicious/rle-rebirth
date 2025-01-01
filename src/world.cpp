@@ -4,7 +4,7 @@
 
 namespace world {
 
-std::vector<aabb> platforms{{4000,4000,2000,1000}};
+std::vector<aabb> platforms{{3000,4000,2000,1000}};
 
 void draw(double scale) {
     for(const auto& p : platforms) {

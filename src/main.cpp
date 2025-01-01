@@ -11,7 +11,7 @@ by Jeffery Myers is marked with CC0 1.0. To view a copy of this license, visit h
 
 #include "resource_dir.h"
 
-#include "common.h"
+#include "geometry.h"
 #include "world.h"
 #include "player.h"
 
@@ -37,6 +37,7 @@ int main () {
     // game loop
     constexpr point chain_point{640*16,400*16};
     constexpr double chain_length{400*16};
+    aabb from{0,0,500,700};
     while (!WindowShouldClose()) {
         player::tick(chain_point, chain_length);
         
@@ -46,6 +47,19 @@ int main () {
         ClearBackground(BLACK);
         
         world::draw(scale);
+        
+        const point to{GetMouseX()*scale, GetMouseY()*scale};
+        if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            from.x = to.x;
+            from.y = to.y;
+        }
+        DrawRectangle(from.x/scale, from.y/scale, from.wdth/scale, from.hght/scale, BLUE);
+        DrawLine(from.x/scale, from.y/scale, to.x/scale, to.y/scale, BLUE);
+        for(const auto& platform : world::platforms) {
+            // const auto cast_point = origin_to_point_over_aabb_trace(mouse, platform);
+            const auto cast_point = aabb_to_point_over_aabb_trace(from, to, platform);
+            DrawRectangle(cast_point.x/scale, cast_point.y/scale, from.wdth/scale, from.hght/scale, RED);
+        }
         
         DrawText(TextFormat("Hello Raylib, frame time: %.4f", GetFrameTime()), 200, 200, 20, WHITE);
         DrawTexture(wabbit, 400, 200, WHITE);
