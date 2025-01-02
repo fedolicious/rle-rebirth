@@ -37,9 +37,13 @@ int main () {
     // game loop
     constexpr point chain_point{640*16,400*16};
     constexpr double chain_length{400*16};
-    aabb from{0,0,500,700};
+    aabb from{0,0,50*16,50*16};
+    bool paused = true;
     while (!WindowShouldClose()) {
-        player::tick(chain_point, chain_length);
+        if(IsKeyPressed(KEY_BACKSLASH)) { paused = !paused; }
+        if(!paused || IsKeyPressed(KEY_RIGHT_SHIFT) || IsKeyDown(KEY_ENTER)) {
+            player::tick(chain_point, chain_length);
+        }
         
         BeginDrawing();
         constexpr double scale = 16;
@@ -50,15 +54,17 @@ int main () {
         
         const point to{GetMouseX()*scale, GetMouseY()*scale};
         if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-            from.x = to.x;
-            from.y = to.y;
+            // from.x = to.x;
+            // from.y = to.y;
+            from.x = 3200;
+            from.y = 11200;
         }
         DrawRectangle(from.x/scale, from.y/scale, from.wdth/scale, from.hght/scale, BLUE);
         DrawLine(from.x/scale, from.y/scale, to.x/scale, to.y/scale, BLUE);
         for(const auto& platform : world::platforms) {
-            // const auto cast_point = origin_to_point_over_aabb_trace(mouse, platform);
-            const auto cast_point = aabb_to_point_over_aabb_trace(from, to, platform);
-            DrawRectangle(cast_point.x/scale, cast_point.y/scale, from.wdth/scale, from.hght/scale, RED);
+            const auto result = aabb_to_point_over_aabb_trace(from, to, platform);
+            const auto& end_point = result.end_point;
+            DrawRectangle(end_point.x/scale, end_point.y/scale, from.wdth/scale, from.hght/scale, RED);
         }
         
         DrawText(TextFormat("Hello Raylib, frame time: %.4f", GetFrameTime()), 200, 200, 20, WHITE);
