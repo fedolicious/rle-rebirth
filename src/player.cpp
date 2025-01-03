@@ -5,6 +5,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <cassert>
 
 namespace player {
 
@@ -18,7 +19,12 @@ numeric_t x_vel = 0;
 numeric_t y_vel = 0;
 
 bool on_ground() {
-    return y == max_y;
+    for(const auto& platform : world::platforms) {
+        if(aabb_to_point_over_aabb_trace(make_aabb(), {x,y+1}, platform).factor == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 void tick(point chain_point, double chain_length) {
     bool outside;
@@ -52,52 +58,48 @@ void tick(point chain_point, double chain_length) {
             y_vel = jump_vel;
         }
     } else {
+        if constexpr(can_fly) {
+            if(IsKeyPressed(KEY_SPACE)) {
+                y_vel = jump_vel;
+            }
+        }
         //TODO swinging should affect movement when not on ground
         y_vel += gravity;
     }
-
-    const point pos_vel = {x+x_vel, y+y_vel};
-    const aabb player_aabb = make_aabb();
-    trace_result world_trace = {pos_vel, 1, trace_result::side::none};
-    for(const auto& platform : world::platforms) {
-        const auto platform_trace = aabb_to_point_over_aabb_trace(player_aabb, pos_vel, platform);
-        if(platform_trace.factor < world_trace.factor) {
-            world_trace = platform_trace;
+    //collide and slide
+    point target_pos;
+    size_t i = 0;
+    do {
+        const aabb player = make_aabb();
+        target_pos = {x+x_vel, y+y_vel};
+        
+        trace_result world_trace = {target_pos, 1, trace_result::side::none};
+        for(const auto& platform : world::platforms) {
+            const auto platform_trace = aabb_to_point_over_aabb_trace(player, target_pos, platform);
+            if(platform_trace.factor < world_trace.factor) {
+                world_trace = platform_trace;
+            }
         }
-    }
-    
-    //position and clamp
-    // x += x_vel*world_trace.factor;
-    // y += y_vel*world_trace.factor;
-    x = world_trace.end_point.x;
-    y = world_trace.end_point.y;
-    switch(world_trace.hit_side) {
-    using enum trace_result::side;
-        case neg_x:
-        case pos_x:
-            x_vel = 0;
-            break;
-        case neg_y:
-        case pos_y:
-            y_vel = 0;
-            break;
-        case none: break;
-    }
-    
-    if(x > max_x) {
-        x = max_x;
-        x_vel = 0;
-    } else if(x < 0) {
-        x = 0;
-        x_vel = 0;
-    }
-    if(y > max_y) {
-        y = max_y;
-        y_vel = 0;
-    } else if(y < 0) {
-        y = 0;
-        y_vel = 0;
-    }
+        
+        x = world_trace.end_point.x;
+        y = world_trace.end_point.y;
+        
+        switch(world_trace.hit_side) {
+        using enum trace_result::side;
+            case neg_x:
+            case pos_x:
+                x_vel = 0;
+                break;
+            case neg_y:
+            case pos_y:
+                y_vel = 0;
+                break;
+            case none: break;
+        }
+        
+        assert(i < 10);
+        i++;
+    } while(point{x,y} != target_pos);
 }
 void draw(double scale) {
     const auto drawnWdth = wdth/scale;

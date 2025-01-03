@@ -41,7 +41,7 @@ int main () {
     bool paused = true;
     while (!WindowShouldClose()) {
         if(IsKeyPressed(KEY_BACKSLASH)) { paused = !paused; }
-        if(!paused || IsKeyPressed(KEY_RIGHT_SHIFT) || IsKeyDown(KEY_ENTER)) {
+        if(!paused || IsKeyPressed(KEY_RIGHT_SHIFT)) {
             player::tick(chain_point, chain_length);
         }
         
@@ -53,11 +53,15 @@ int main () {
         world::draw(scale);
         
         const point to{GetMouseX()*scale, GetMouseY()*scale};
+        if(IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+            player::x = GetMouseX()*scale;
+            player::y = GetMouseY()*scale;
+        }
         if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             // from.x = to.x;
             // from.y = to.y;
-            from.x = 3200;
-            from.y = 11200;
+            from.x = 3000-50*16;
+            from.y = 12000-50*16;
         }
         DrawRectangle(from.x/scale, from.y/scale, from.wdth/scale, from.hght/scale, BLUE);
         DrawLine(from.x/scale, from.y/scale, to.x/scale, to.y/scale, BLUE);

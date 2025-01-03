@@ -6,6 +6,8 @@ struct point {
     using numeric_t = double;
     numeric_t x;
     numeric_t y;
+    
+    point operator<=>(const point&) const = default;
     // point operator+(const point other) const { return {x+other.x, y+other.y}; }
     // point operator-() const { return {-x,-y}; }
     // point operator-(const point other) const { return *this +- other; }

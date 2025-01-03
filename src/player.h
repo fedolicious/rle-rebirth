@@ -12,8 +12,7 @@ namespace player {
     constexpr numeric_t max_ground_speed = 100;
     constexpr numeric_t wdth = 50*16;
     constexpr numeric_t hght = 50*16;
-    constexpr numeric_t max_x = world::wdth - wdth;
-    constexpr numeric_t max_y = world::hght - hght;
+    constexpr bool can_fly = false;
     extern numeric_t x;
     extern numeric_t y;
     extern numeric_t x_vel;
