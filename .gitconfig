@@ -1,0 +1,2 @@
+[alias]
+	my-diff = diff -w --color-words --word-diff-regex=\"[a-zA-Z0-9_]+|[^[:space:]]\"
