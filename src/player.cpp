@@ -13,10 +13,6 @@ namespace player {
     TODO
     add variables for chain hand offset
 */
-numeric_t x = 200*16;
-numeric_t y = 400*16;
-numeric_t x_vel = 0;
-numeric_t y_vel = 0;
 
 bool on_ground() {
     for(const auto& platform : world::platforms) {
@@ -26,28 +22,50 @@ bool on_ground() {
     }
     return false;
 }
-void tick(point chain_point, double chain_length) {
-    bool outside;
-    {
-        const double x_dist = std::abs(player::x-chain_point.x);
-        const double y_dist = std::abs(player::y-chain_point.y);
-        outside = x_dist*x_dist + y_dist*y_dist > chain_length*chain_length;
+void tick() {
+    const numeric_t held_x_direction = IsKeyDown(KEY_D)-IsKeyDown(KEY_A);
+    if(IsKeyPressed(KEY_LEFT_SHIFT)) {
+        if(current_chain.has_value()) {
+            current_chain.reset();
+        } else {
+            const auto chain_base = point{x,y}+chain_offset;
+            const trace_result res = world_trace(
+                point_to_point_over_aabb_trace,
+                chain_base,
+                point{chain_base.x + held_x_direction*chain_range, chain_base.y});
+            std::cout
+                << res.end_point.x << ", "
+                << res.end_point.y << ", "
+                << int(res.hit_side) << ", "
+                << res.factor << "\n";
+            if(res.hit_side != trace_result::side::none) {
+                const auto offset = point{x,y} - res.end_point;
+                // const auto chain_length = std::sqrt(offset.norm);
+                current_chain.emplace(res.end_point, std::sqrt(offset.norm()));
+            }
+        }
     }
-    //clamp within chain radius
-    if(IsKeyDown(KEY_LEFT_SHIFT) && outside) {
-        const auto rel_x = x-chain_point.x;
-        const auto rel_y = y-chain_point.y;
-        const auto chain_dist_sq = rel_x*rel_x + rel_y*rel_y;
+    //chain kinematics
+    if(current_chain.has_value()) {
+        const auto& attach_point = current_chain->attach_point;
+        const auto relative_pos = point{x,y} - attach_point + chain_offset;
+        
+        const auto chain_dist_sq = relative_pos.x*relative_pos.x + relative_pos.y*relative_pos.y;
         const auto chain_dist = std::sqrt(chain_dist_sq);
-        x = chain_point.x + chain_length/chain_dist*rel_x;
-        y = chain_point.y + chain_length/chain_dist*rel_y;
-        const auto dot_prod = (x_vel*rel_x + y_vel*rel_y)/chain_dist_sq;
-        x_vel -= rel_x*dot_prod;
-        y_vel -= rel_y*dot_prod;
+        if(chain_dist >= current_chain->length) {
+            const auto new_pos = attach_point - chain_offset + current_chain->length/chain_dist*relative_pos;
+            x = new_pos.x;
+            y = new_pos.y;
+            // x = chain_point.x + chain_length/chain_dist*relative_pos.x;
+            // y = chain_point.y + chain_length/chain_dist*relative_pos.y;
+            const auto dot_prod = (x_vel*relative_pos.x + y_vel*relative_pos.y)/chain_dist_sq;
+            const auto new_vel = point{x_vel,y_vel} - relative_pos*dot_prod;
+            x_vel = new_vel.x;
+            y_vel = new_vel.y;
+        }
     }
-    //velocity
-    const double x_direction = IsKeyDown(KEY_D)-IsKeyDown(KEY_A);
-    const auto target_vel = x_direction*max_ground_speed;
+    //player movement kinematics
+    const auto target_vel = held_x_direction*max_ground_speed;
     if(on_ground()) {
         if(x_vel < target_vel) {
             x_vel = std::min(x_vel+ground_accel, target_vel);
@@ -102,14 +120,32 @@ void tick(point chain_point, double chain_length) {
     } while(point{x,y} != target_pos);
 }
 void draw(double scale) {
-    const auto drawnWdth = wdth/scale;
-    const auto drawnHght = hght/scale;
     DrawRectangle(
         x/scale,
         y/scale,
-        drawnWdth,
-        drawnHght,
+        wdth/scale,
+        hght/scale,
         on_ground()?ORANGE:RED);
+    const auto chain_base = point{x,y}+chain_offset;
+    DrawLine(
+        chain_base.x/scale,
+        chain_base.y/scale,
+        (chain_base.x + (IsKeyDown(KEY_D)-IsKeyDown(KEY_A))*chain_range)/scale,
+        chain_base.y/scale,
+        ORANGE);
+    if(current_chain.has_value()) {
+        const auto drawn_x = current_chain->attach_point.x/scale;
+        const auto drawn_y = current_chain->attach_point.y/scale;
+        DrawCircle(
+            drawn_x, drawn_y,
+            current_chain->length/scale,
+            Color{255,255,255,uint8_t(false?60:50)});
+        DrawLine(
+            drawn_x, drawn_y,
+            current_chain->attach_point.x/scale,
+            current_chain->attach_point.y/scale,
+            ORANGE);
+    }
 }
 aabb make_aabb() { return {x,y,wdth,hght}; }
 

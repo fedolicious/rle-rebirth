@@ -35,14 +35,12 @@ int main () {
     Texture wabbit = LoadTexture("wabbit_alpha.png");
     
     // game loop
-    constexpr point chain_point{640*16,400*16};
-    constexpr double chain_length{400*16};
     aabb from{0,0,50*16,50*16};
     bool paused = true;
     while (!WindowShouldClose()) {
         if(IsKeyPressed(KEY_BACKSLASH)) { paused = !paused; }
         if(!paused || IsKeyPressed(KEY_RIGHT_SHIFT)) {
-            player::tick(chain_point, chain_length);
+            player::tick();
         }
         
         BeginDrawing();
@@ -76,17 +74,6 @@ int main () {
 
         DrawText(TextFormat("x: %.0lf\ny: %.0lf\nxV: %.0lf\nyV: %.0lf", player::x, player::y, player::x_vel, player::y_vel),
             200, 250, 20, WHITE);
-        DrawCircle(
-            chain_point.x/scale,
-            chain_point.y/scale,
-            chain_length/scale,
-            Color{255,255,255,uint8_t(false?60:50)});
-        DrawLine(
-            player::x/scale,
-            player::y/scale,
-            chain_point.x/scale,
-            chain_point.y/scale,
-            ORANGE);
         player::draw(scale);
         EndDrawing();
     }

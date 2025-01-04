@@ -31,3 +31,19 @@ trace_result aabb_to_point_over_aabb_trace(aabb from, point to, aabb over) {
     result.end_point.y += from.y;
     return result;
 }
+trace_result point_to_point_over_aabb_trace(point from, point to, aabb over) {
+    
+    auto result = origin_to_point_over_aabb_trace(
+        to-from,
+        {over.x-from.x, over.y-from.y, over.wdth, over.hght});
+    result.end_point.x += from.x;
+    result.end_point.y += from.y;
+    return result;
+}
+
+point::numeric_t dot_prod(point p1, point p2) {
+    return p1.x*p2.x+p1.y*p1.y;
+}
+point::numeric_t point::norm() const {
+    return dot_prod(*this,*this);
+}

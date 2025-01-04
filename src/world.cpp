@@ -24,5 +24,5 @@ void draw(double scale) {
             GREEN);
     }
 }
-    
+
 }
